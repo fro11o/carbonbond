@@ -2,7 +2,7 @@ import * as React from 'react';
 import { RouteComponentProps } from 'react-router';
 import queryString from 'query-string';
 import { toast } from 'react-toastify';
-import { API_FETCHER, unwrap } from '../../ts/api/api';
+import { API_FETCHER, unwrap, map } from '../../ts/api/api';
 import { ArticleCard } from '../article_card';
 import { Article } from '../../ts/api/api_trait';
 
@@ -10,6 +10,8 @@ import '../../css/article_wrapper.css';
 import '../../css/layout.css';
 import { useInputValue } from '../utils';
 import { BoardCacheState } from '../global_state/board_cache';
+import { useForce } from '../../ts/cache';
+import { Force } from 'force';
 
 function getQueryOr(name: string, query: queryString.ParsedQuery, default_val: string): string {
 	try {
@@ -38,12 +40,29 @@ type CategoryEntry = { name: string, board_name: string, id: number };
 
 export function SearchPage(props: RouteComponentProps): JSX.Element {
 	const { cur_board, setCurBoard } = BoardCacheState.useContainer();
+	let [cur_category, setCurCategory] = React.useState<number | null>(null);
+
 	const used_board_value = useInputValue('');
 	let search_board = used_board_value.input_props;
 	let setSearchBoard = React.useCallback(used_board_value.setValue, []);
-	let [urlBoard, setUrlBoard] = React.useState('');
+
+	let search_category = useInputValue('', onSearchCategoryChange).input_props;
+
+	let [url_board, setUrlBoard] = React.useState('');
 	let [articles, setArticles] = React.useState(new Array<Article>());
 	let [categories, setCategories] = React.useState(new Array<CategoryEntry>());
+
+	function onSearchCategoryChange(category_id_str: string) {
+		if (category_id_str !== '') {
+			let category_id = parseInt(category_id_str);
+			setCurCategory(category_id);
+		} else {
+			setCurCategory(null);
+		}
+	}
+
+	let force = useForce(cur_category);
+
 	React.useEffect(() => {
 		let opt = queryString.parse(props.location.search);
 		let query = (() => {
@@ -51,6 +70,7 @@ export function SearchPage(props: RouteComponentProps): JSX.Element {
 				let title = getQuery('title', opt);
 				let board = getQueryOpt('board', opt);
 				let author = getQueryOpt('author', opt);
+				let category = map(getQueryOpt('category', opt), parseInt);
 				if (board) {
 					setUrlBoard(board);
 					setSearchBoard(board);
@@ -59,7 +79,12 @@ export function SearchPage(props: RouteComponentProps): JSX.Element {
 					setUrlBoard('');
 					setSearchBoard('');
 				}
-				return { title, board, author };
+				if (category) {
+					setCurCategory(category);
+				} else {
+					setCurCategory(null);
+				}
+				return { title, board, author, category };
 			} catch (err) {
 				toast.error(err);
 				return err as string;
@@ -68,7 +93,7 @@ export function SearchPage(props: RouteComponentProps): JSX.Element {
 		if (typeof query == 'string') {
 			return;
 		}
-		API_FETCHER.searchArticle(query.author, query.board, null, null, null, {}, query.title).then(res => {
+		API_FETCHER.searchArticle(query.author, query.board, query.category, null, null, {}, query.title).then(res => {
 			try {
 				let articles = unwrap(res);
 				let category_map: { [id: string]: CategoryEntry } = {};
@@ -88,7 +113,7 @@ export function SearchPage(props: RouteComponentProps): JSX.Element {
 				toast.error(e);
 			}
 		});
-	}, [setCurBoard, props.location.search]);
+	}, [setCurBoard, setSearchBoard, props.location.search]);
 	let opt = queryString.parse(props.location.search);
 	const author = useInputValue(getQueryOr('author', opt, '')).input_props;
 
@@ -103,6 +128,11 @@ export function SearchPage(props: RouteComponentProps): JSX.Element {
 			opt.board = search_board.value;
 		} else {
 			delete opt.board;
+		}
+		if (search_category.value.length > 0) {
+			opt.category = search_category.value;
+		} else {
+			delete opt.category;
 		}
 		props.history.push(`/app/search?${queryString.stringify(opt)}`);
 	}
@@ -131,18 +161,20 @@ export function SearchPage(props: RouteComponentProps): JSX.Element {
 						(() => {
 							if (cur_board) {
 								return <option value={cur_board}>{cur_board}</option>;
-							} else if (urlBoard) {
-								return <option value={urlBoard}>{urlBoard}</option>;
+							} else if (url_board) {
+								return <option value={url_board}>{url_board}</option>;
 							}
 						})()
 					}
 				</select><br/>
 				<label>分類</label><br/>
-				<select>
-					<option value={-1}>全部分類</option>
+				<select {...search_category}>
+					<option value="">全部分類</option>
 					{
 						categories.map(category => {
-							return <option value={category.id}>{category.board_name} - {category.name}</option>;
+							return <option value={category.id} key={category.id}>
+								{category.board_name} - {category.name}
+							</option>;
 						})
 					}
 

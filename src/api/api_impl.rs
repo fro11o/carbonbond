@@ -45,7 +45,7 @@ impl api_trait::ArticleQueryRouter for ArticleQueryRouter {
         context: &mut crate::Ctx,
         author_name: Option<String>,
         board_name: Option<String>,
-        category: Option<String>,
+        category: Option<i64>,
         end_time: Option<DateTime<Utc>>,
         start_time: Option<DateTime<Utc>>,
         str_content: HashMap<String, String>,
