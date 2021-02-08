@@ -8,7 +8,8 @@ export type EditorPanelData = {
 	board: Board,
 	category?: string,
 	title: string,
-	content: { [index: string]: string | string[] },
+	// TODO: 與力語言關聯以使用更強的型別約束
+	content: { [index: string]: any },
 };
 
 function useEditorPanelState(): {

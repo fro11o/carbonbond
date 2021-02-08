@@ -74,6 +74,7 @@ function EditorPanel(): JSX.Element | null {
 	}
 }
 
+
 const SingleField = (props: { field: Force.Field, validator: Validator }): JSX.Element => {
 	const { field, validator } = props;
 	const [validate_info, setValidateInfo] = useState<undefined | string>(undefined);
@@ -92,24 +93,46 @@ const SingleField = (props: { field: Force.Field, validator: Validator }): JSX.E
 		placeholder: field.name,
 		id: field.name,
 		value: content[field.name],
-		onChange: (evt: { target: { value: string } }) => {
-			setEditorPanelData({
-				...editor_panel_data,
-				content: {
-					...editor_panel_data.content,
-					[field.name]: evt.target.value
-				}
-			});
-		}
 	};
-	if (field.datatype.t.kind == 'text') {
+	const changeContent = (value: any): void => {
+		setEditorPanelData({
+			...editor_panel_data,
+			content: {
+				...editor_panel_data.content,
+				[field.name]: value
+			}
+		});
+	};
+
+	const BondField = (props: { changeContent: Function }): JSX.Element => {
+		return <div>
+			<input value={content[field.name].target_article} placeholder="文章代碼"/>
+			<input value={content[field.name].tag} placeholder="標籤（選填）"/>
+			<select value={content[field.name].energy}>
+				<option value="0">0</option>
+				<option value="1">1</option>
+				<option value="-1">-1</option>
+			</select>
+		</div>;
+	};
+
+	if (field.datatype.t.kind == 'bond') {
 		return <>
-			<textarea {...input_props} />
+			<BondField changeContent={changeContent}/>
+			{validate_info && <InvalidMessage msg={validate_info} />}
+		</>;
+	} else if (field.datatype.t.kind == 'text') {
+		return <>
+			<textarea {...input_props} onChange={(event: {target: {value: string}}) => {
+				changeContent(event.target.value);
+			}}/>
 			{validate_info && <InvalidMessage msg={validate_info} />}
 		</>;
 	} else {
 		return <>
-			<input {...input_props} />
+			<input {...input_props} onChange={(event: {target: {value: string}}) => {
+				changeContent(event.target.value);
+			}}/>
 			{validate_info && <InvalidMessage msg={validate_info} />}
 		</>;
 	}
@@ -293,6 +316,7 @@ function _EditorBody(props: RouteComponentProps): JSX.Element {
 			})
 			.then(() => {
 
+				// 送出前轉換
 				for (let field of category.fields) {
 					if (field.datatype.t.kind == 'bond') {
 						if (field.datatype.kind == 'array') {
