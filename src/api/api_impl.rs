@@ -351,6 +351,27 @@ impl api_trait::UserQueryRouter for UserQueryRouter {
     ) -> Result<Vec<super::model::UserMini>, crate::custom_error::Error> {
         db::user_relation::query_hater(user).await
     }
+    async fn query_signup_invitation_list(
+        &self,
+        context: &mut crate::Ctx,
+        user: i64,
+    ) -> Result<Vec<super::model::SignupInvitation>, crate::custom_error::Error> {
+        db::signup_invitations::query_signup_invitation(user).await
+    }
+    async fn activate_signup_invitation(
+        &self,
+        context: &mut crate::Ctx,
+        signup_invitation_id: i64,
+    ) -> Result<(), crate::custom_error::Error> {
+        db::signup_invitations::activate_signup_invitation(signup_invitation_id).await
+    }
+    async fn deactivate_signup_invitation(
+        &self,
+        context: &mut crate::Ctx,
+        signup_invitation_id: i64,
+    ) -> Result<(), crate::custom_error::Error> {
+        db::signup_invitations::deactivate_signup_invitation(signup_invitation_id).await
+    }
     async fn query_user(
         &self,
         _context: &mut crate::Ctx,
